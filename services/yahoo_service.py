@@ -1,208 +1,197 @@
 """
 ============================================================
 StockPredictor AI
-services/data_loader.py
+services/yahoo_service.py
 ============================================================
+
+Yahoo Finance Service
 
 Responsible for:
-- Downloading stock history
-- Company information
-- Latest price
-- Financial data
-- Validation
-
-Author : Panshul Agarwal
-============================================================
+- Downloading historical stock data
+- Fetching company information
+- Dashboard metrics
+- Financial statements
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any
 
 import pandas as pd
 import streamlit as st
 import yfinance as yf
 
+from utils.constants import (
+    CACHE_TTL,
+    DEFAULT_INTERVAL,
+    DEFAULT_PERIOD,
+    DEFAULT_SYMBOL,
+)
+from utils.formatting import (
+    format_currency,
+    format_market_cap,
+    format_price_change,
+    format_volume,
+)
+
 
 @dataclass
 class StockDataLoader:
     """
-    Handles all Yahoo Finance communication.
-
-    Example
-    -------
-    >>> loader = StockDataLoader("AAPL")
-    >>> history = loader.history()
-    >>> info = loader.company_info()
+    Yahoo Finance wrapper.
     """
 
-    symbol: str
+    symbol: str = DEFAULT_SYMBOL
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
 
-        self.symbol = self.symbol.upper().strip()
+        self.symbol = (self.symbol or DEFAULT_SYMBOL).strip().upper()
+
+        if not self.symbol:
+            self.symbol = DEFAULT_SYMBOL
 
         self.ticker = yf.Ticker(self.symbol)
 
-    # =====================================================
-    # HISTORICAL DATA
-    # =====================================================
+    # ======================================================
+    # HISTORY
+    # ======================================================
 
-    @st.cache_data(show_spinner=False)
+    @st.cache_data(ttl=CACHE_TTL, show_spinner=False)
     def history(
         _self,
-        period: str = "5y",
-        interval: str = "1d"
+        period: str = DEFAULT_PERIOD,
+        interval: str = DEFAULT_INTERVAL,
     ) -> pd.DataFrame:
+        """
+        Download historical stock data.
+        """
 
         try:
 
             df = yf.download(
-
-                tickers=_self.symbol,
-
+                _self.symbol,
                 period=period,
-
                 interval=interval,
-
                 auto_adjust=True,
-
-                progress=False
-
+                progress=False,
+                group_by="column",
             )
 
             if df.empty:
-
                 return pd.DataFrame()
 
-            df.dropna(inplace=True)
+            # Handle MultiIndex if Yahoo returns one
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.get_level_values(0)
 
-            df.index = pd.to_datetime(df.index)
+            df = df.dropna()
 
             return df
 
         except Exception:
-
             return pd.DataFrame()
 
-    # =====================================================
-    # COMPANY INFORMATION
-    # =====================================================
+    # ======================================================
+    # COMPANY INFO
+    # ======================================================
 
-    @st.cache_data(show_spinner=False)
-    def company_info(_self) -> dict:
+    @st.cache_data(ttl=CACHE_TTL, show_spinner=False)
+    def company_info(_self) -> dict[str, Any]:
+        """
+        Fetch company metadata.
+        """
 
         try:
-
             return _self.ticker.info
-
         except Exception:
-
             return {}
 
-    # =====================================================
-    # CURRENT PRICE
-    # =====================================================
+    # ======================================================
+    # METRICS
+    # ======================================================
 
-    @st.cache_data(show_spinner=False)
-    def current_price(_self) -> Optional[float]:
+    def dashboard_metrics(self) -> dict[str, Any]:
+        """
+        Build dashboard metrics.
+        """
 
-        try:
+        info = self.company_info()
 
-            history = _self.ticker.history(period="2d")
+        current = info.get("currentPrice")
 
-            if history.empty:
+        previous = info.get("previousClose")
 
-                return None
+        return {
 
-            return float(history["Close"].iloc[-1])
+            "current_price":
+                format_currency(current),
 
-        except Exception:
+            "day_change":
+                format_price_change(current, previous),
 
-            return None
+            "market_cap":
+                format_market_cap(
+                    info.get("marketCap")
+                ),
 
-    # =====================================================
-    # DIVIDENDS
-    # =====================================================
+            "pe_ratio":
+                info.get("trailingPE", "--"),
 
-    @st.cache_data(show_spinner=False)
-    def dividends(_self) -> pd.Series:
+            "volume":
+                format_volume(
+                    info.get("volume")
+                ),
 
-        try:
+            "fifty_two_week_high":
+                format_currency(
+                    info.get("fiftyTwoWeekHigh")
+                ),
 
-            return _self.ticker.dividends
+            "fifty_two_week_low":
+                format_currency(
+                    info.get("fiftyTwoWeekLow")
+                ),
 
-        except Exception:
+        }
 
-            return pd.Series(dtype=float)
-
-    # =====================================================
-    # SPLITS
-    # =====================================================
-
-    @st.cache_data(show_spinner=False)
-    def splits(_self) -> pd.Series:
-
-        try:
-
-            return _self.ticker.splits
-
-        except Exception:
-
-            return pd.Series(dtype=float)
-
-    # =====================================================
+    # ======================================================
     # FINANCIALS
-    # =====================================================
+    # ======================================================
 
-    @st.cache_data(show_spinner=False)
-    def financials(_self):
+    @st.cache_data(ttl=CACHE_TTL)
+    def financials(_self) -> pd.DataFrame:
 
         try:
-
             return _self.ticker.financials
-
         except Exception:
-
             return pd.DataFrame()
 
-    # =====================================================
-    # BALANCE SHEET
-    # =====================================================
-
-    @st.cache_data(show_spinner=False)
-    def balance_sheet(_self):
+    @st.cache_data(ttl=CACHE_TTL)
+    def balance_sheet(_self) -> pd.DataFrame:
 
         try:
-
             return _self.ticker.balance_sheet
-
         except Exception:
-
             return pd.DataFrame()
 
-    # =====================================================
-    # CASH FLOW
-    # =====================================================
-
-    @st.cache_data(show_spinner=False)
-    def cashflow(_self):
+    @st.cache_data(ttl=CACHE_TTL)
+    def cashflow(_self) -> pd.DataFrame:
 
         try:
-
             return _self.ticker.cashflow
-
         except Exception:
-
             return pd.DataFrame()
 
-    # =====================================================
-    # VALID SYMBOL
-    # =====================================================
+    # ======================================================
+    # VALIDATION
+    # ======================================================
 
     def is_valid(self) -> bool:
+        """
+        Check whether the ticker is valid.
+        """
 
-        df = self.history(period="5d")
+        history = self.history(period="5d")
 
-        return not df.empty
+        return not history.empty

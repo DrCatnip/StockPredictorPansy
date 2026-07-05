@@ -28,7 +28,3 @@ An AI-powered stock analysis platform that provides:
 - Plotly
 - yFinance
 - Pandas, NumPy
-
----
-
-## 📂 Project Structure

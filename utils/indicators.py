@@ -1,130 +1,188 @@
+"""
+============================================================
+StockPredictor AI
+utils/indicators.py
+============================================================
+
+Technical Indicator Calculations
+
+This module calculates all technical indicators used
+throughout the application.
+"""
+
+from __future__ import annotations
+
 import pandas as pd
 
 
-# --------------------------------------------------------
-# SIMPLE MOVING AVERAGE
-# --------------------------------------------------------
+# ==========================================================
+# MAIN FUNCTION
+# ==========================================================
 
-def add_sma(data: pd.DataFrame) -> pd.DataFrame:
+def calculate_indicators(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculate all supported technical indicators.
 
-    df = data.copy()
+    Parameters
+    ----------
+    df : pd.DataFrame
 
-    df["SMA20"] = df["Close"].rolling(window=20).mean()
-    df["SMA50"] = df["Close"].rolling(window=50).mean()
+    Returns
+    -------
+    pd.DataFrame
+    """
 
-    return df
+    if df.empty:
+        return df
 
+    required_columns = {
+        "Open",
+        "High",
+        "Low",
+        "Close",
+        "Volume",
+    }
 
-# --------------------------------------------------------
-# EXPONENTIAL MOVING AVERAGE
-# --------------------------------------------------------
+    if not required_columns.issubset(df.columns):
+        raise ValueError(
+            "DataFrame is missing one or more required OHLCV columns."
+        )
 
-def add_ema(data: pd.DataFrame) -> pd.DataFrame:
+    close = df["Close"]
+    high = df["High"]
+    low = df["Low"]
+    volume = df["Volume"]
 
-    df = data.copy()
+    # ======================================================
+    # SIMPLE MOVING AVERAGES
+    # ======================================================
 
-    df["EMA20"] = df["Close"].ewm(span=20, adjust=False).mean()
-    df["EMA50"] = df["Close"].ewm(span=50, adjust=False).mean()
+    df["SMA20"] = close.rolling(window=20).mean()
+    df["SMA50"] = close.rolling(window=50).mean()
+    df["SMA200"] = close.rolling(window=200).mean()
 
-    return df
+    # ======================================================
+    # EXPONENTIAL MOVING AVERAGES
+    # ======================================================
 
+    df["EMA20"] = close.ewm(
+        span=20,
+        adjust=False,
+    ).mean()
 
-# --------------------------------------------------------
-# RSI
-# --------------------------------------------------------
+    df["EMA50"] = close.ewm(
+        span=50,
+        adjust=False,
+    ).mean()
 
-def add_rsi(data: pd.DataFrame, period: int = 14):
+    # ======================================================
+    # RSI
+    # ======================================================
 
-    df = data.copy()
+    delta = close.diff()
 
-    delta = df["Close"].diff()
+    gain = delta.clip(lower=0)
 
-    gain = delta.where(delta > 0, 0)
-    loss = -delta.where(delta < 0, 0)
+    loss = -delta.clip(upper=0)
 
-    avg_gain = gain.rolling(period).mean()
-    avg_loss = loss.rolling(period).mean()
+    average_gain = gain.rolling(14).mean()
 
-    rs = avg_gain / avg_loss
+    average_loss = loss.rolling(14).mean()
+
+    rs = average_gain / average_loss
 
     df["RSI"] = 100 - (100 / (1 + rs))
 
-    return df
+    # ======================================================
+    # MACD
+    # ======================================================
 
+    ema12 = close.ewm(
+        span=12,
+        adjust=False,
+    ).mean()
 
-# --------------------------------------------------------
-# MACD
-# --------------------------------------------------------
-
-def add_macd(data: pd.DataFrame):
-
-    df = data.copy()
-
-    ema12 = df["Close"].ewm(span=12, adjust=False).mean()
-    ema26 = df["Close"].ewm(span=26, adjust=False).mean()
+    ema26 = close.ewm(
+        span=26,
+        adjust=False,
+    ).mean()
 
     df["MACD"] = ema12 - ema26
-    df["Signal"] = df["MACD"].ewm(span=9, adjust=False).mean()
-    df["Histogram"] = df["MACD"] - df["Signal"]
 
-    return df
+    df["Signal"] = df["MACD"].ewm(
+        span=9,
+        adjust=False,
+    ).mean()
 
+    df["Histogram"] = (
+        df["MACD"] - df["Signal"]
+    )
 
-# --------------------------------------------------------
-# BOLLINGER BANDS
-# --------------------------------------------------------
+    # ======================================================
+    # BOLLINGER BANDS
+    # ======================================================
 
-def add_bollinger_bands(data: pd.DataFrame):
+    middle = close.rolling(20).mean()
 
-    df = data.copy()
+    std = close.rolling(20).std()
 
-    sma = df["Close"].rolling(20).mean()
+    df["BB_Middle"] = middle
 
-    std = df["Close"].rolling(20).std()
+    df["BB_Upper"] = middle + (2 * std)
 
-    df["BB_Upper"] = sma + (2 * std)
-    df["BB_Lower"] = sma - (2 * std)
+    df["BB_Lower"] = middle - (2 * std)
 
-    return df
+    # ======================================================
+    # ATR
+    # ======================================================
 
+    tr1 = high - low
 
-# --------------------------------------------------------
-# ATR
-# --------------------------------------------------------
+    tr2 = (high - close.shift()).abs()
 
-def add_atr(data: pd.DataFrame, period: int = 14):
+    tr3 = (low - close.shift()).abs()
 
-    df = data.copy()
-
-    high_low = df["High"] - df["Low"]
-
-    high_close = (df["High"] - df["Close"].shift()).abs()
-
-    low_close = (df["Low"] - df["Close"].shift()).abs()
-
-    tr = pd.concat(
-        [high_low, high_close, low_close],
-        axis=1
+    true_range = pd.concat(
+        [tr1, tr2, tr3],
+        axis=1,
     ).max(axis=1)
 
-    df["ATR"] = tr.rolling(period).mean()
+    df["ATR"] = true_range.rolling(14).mean()
 
-    return df
+    # ======================================================
+    # VWAP
+    # ======================================================
 
+    typical_price = (
+        high + low + close
+    ) / 3
 
-# --------------------------------------------------------
-# APPLY ALL INDICATORS
-# --------------------------------------------------------
+    cumulative_price_volume = (
+        typical_price * volume
+    ).cumsum()
 
-def calculate_indicators(data: pd.DataFrame):
+    cumulative_volume = volume.cumsum()
 
-    df = data.copy()
+    df["VWAP"] = (
+        cumulative_price_volume /
+        cumulative_volume
+    )
 
-    df = add_sma(df)
-    df = add_ema(df)
-    df = add_rsi(df)
-    df = add_macd(df)
-    df = add_bollinger_bands(df)
-    df = add_atr(df)
+    # ======================================================
+    # DAILY RETURNS
+    # ======================================================
+
+    df["Daily_Return"] = close.pct_change()
+
+    # ======================================================
+    # VOLATILITY
+    # ======================================================
+
+    df["Volatility"] = (
+        df["Daily_Return"]
+        .rolling(20)
+        .std()
+        * (252 ** 0.5)
+    )
 
     return df
