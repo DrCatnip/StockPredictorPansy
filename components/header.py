@@ -4,14 +4,7 @@ StockPredictor AI
 components/header.py
 ============================================================
 
-Application Header
-
-Responsible for:
-- Main title
-- Hero banner
-- Project information
-- Live date and time
-============================================================
+Professional Dashboard Header
 """
 
 from __future__ import annotations
@@ -33,76 +26,63 @@ from utils.constants import (
 
 def render_header() -> None:
     """
-    Render application header.
+    Render dashboard header.
     """
 
     now = datetime.now()
 
-    current_date = now.strftime("%A, %d %B %Y")
-
+    current_date = now.strftime("%d %b %Y")
     current_time = now.strftime("%I:%M %p")
 
-    st.markdown(
-        f"""
-<h1 class="main-title">
-📈 {APP_NAME}
-</h1>
-
-<p class="sub-title">
-{APP_DESCRIPTION}
-</p>
-""",
-        unsafe_allow_html=True,
-    )
-
-    left, middle, right = st.columns([2, 1, 1])
+    left, right = st.columns([4, 1])
 
     with left:
-        st.success("🟢 Live Yahoo Finance Data")
 
-    with middle:
-        st.info(f"📅 {current_date}")
+        st.markdown(
+            f"""
+# 📈 {APP_NAME}
+
+### {APP_DESCRIPTION}
+"""
+        )
 
     with right:
-        st.info(f"🕒 {current_time}")
+
+        st.metric(
+            "Today",
+            current_date,
+        )
+
+        st.metric(
+            "Time",
+            current_time,
+        )
 
     st.divider()
 
 
 # ==========================================================
-# HERO SECTION
+# HERO
 # ==========================================================
 
 def render_hero() -> None:
     """
-    Render hero banner.
+    Render hero section.
     """
 
     st.markdown(
         """
-<div style="
-background: linear-gradient(135deg,#2563EB,#1D4ED8);
-padding:30px;
-border-radius:18px;
-margin-bottom:20px;
-">
+<div class="hero-card">
 
-<h2 style="color:white;margin:0 0 12px 0;">
+<h1 class="hero-title">
+🚀 Analyze. Predict. Invest Smarter.
+</h1>
 
-Analyze. Predict. Invest Smarter.
+<p class="hero-subtitle">
 
-</h2>
-
-<p style="
-color:#DBEAFE;
-font-size:17px;
-line-height:1.6;
-margin:0;
-">
-
-StockPredictor AI combines interactive stock charts,
-technical indicators, historical analysis and artificial
-intelligence to help investors make better decisions.
+Professional AI-powered stock market analytics with
+interactive charts, technical indicators,
+live market data and future machine learning predictions.
 
 </p>
 
@@ -113,36 +93,24 @@ intelligence to help investors make better decisions.
 
 
 # ==========================================================
-# PROJECT STATUS
+# STATUS
 # ==========================================================
 
 def render_project_status() -> None:
     """
-    Display application information.
+    Render project status cards.
     """
 
-    col1, col2, col3, col4 = st.columns(4)
+    c1, c2, c3, c4 = st.columns(4)
 
-    with col1:
-        st.metric(
-            "Version",
-            APP_VERSION,
-        )
+    with c1:
+        st.success("🟢 Live Data")
 
-    with col2:
-        st.metric(
-            "Framework",
-            "Streamlit",
-        )
+    with c2:
+        st.info("📊 Yahoo Finance")
 
-    with col3:
-        st.metric(
-            "Data Source",
-            "Yahoo Finance",
-        )
+    with c3:
+        st.info("⚡ Streamlit")
 
-    with col4:
-        st.metric(
-            "Status",
-            "Development",
-        )
+    with c4:
+        st.success(f"Version {APP_VERSION}")

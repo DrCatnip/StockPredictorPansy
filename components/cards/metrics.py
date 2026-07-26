@@ -4,9 +4,7 @@ StockPredictor AI
 components/cards/metrics.py
 ============================================================
 
-Dashboard Metric Cards
-
-Displays key market statistics at the top of the dashboard.
+Professional Metric Cards
 """
 
 from __future__ import annotations
@@ -18,68 +16,75 @@ import streamlit as st
 
 def render_metrics(metrics: dict[str, Any]) -> None:
     """
-    Render the dashboard metric cards.
-
-    Parameters
-    ----------
-    metrics : dict
-        Dictionary returned by
-        StockDataLoader.dashboard_metrics()
+    Render dashboard metric cards.
     """
 
-    col1, col2, col3, col4 = st.columns(4)
+    st.markdown("## 📊 Market Snapshot")
 
-    # ======================================================
-    # ROW 1
-    # ======================================================
+    row1 = st.columns(4)
 
-    with col1:
-        st.metric(
-            label="💲 Current Price",
-            value=metrics.get("current_price", "--"),
-            delta=metrics.get("day_change", "--"),
-        )
+    metric_data = [
+        (
+            "💲 Current Price",
+            metrics.get("current_price", "--"),
+            metrics.get("day_change", "--"),
+        ),
+        (
+            "🏢 Market Cap",
+            metrics.get("market_cap", "--"),
+            None,
+        ),
+        (
+            "📈 P/E Ratio",
+            metrics.get("pe_ratio", "--"),
+            None,
+        ),
+        (
+            "📦 Volume",
+            metrics.get("volume", "--"),
+            None,
+        ),
+    ]
 
-    with col2:
-        st.metric(
-            label="🏢 Market Cap",
-            value=metrics.get("market_cap", "--"),
-        )
+    for column, (title, value, delta) in zip(row1, metric_data):
 
-    with col3:
-        st.metric(
-            label="📊 P/E Ratio",
-            value=str(metrics.get("pe_ratio", "--")),
-        )
+        with column:
 
-    with col4:
-        st.metric(
-            label="📈 Volume",
-            value=metrics.get("volume", "--"),
-        )
+            st.metric(
+                label=title,
+                value=value,
+                delta=delta,
+                border=True,
+            )
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ======================================================
-    # ROW 2
-    # ======================================================
+    row2 = st.columns(2)
 
-    col5, col6 = st.columns(2)
+    with row2[0]:
 
-    with col5:
         st.metric(
-            label="📅 52 Week High",
+            label="📈 52 Week High",
             value=metrics.get(
                 "fifty_two_week_high",
                 "--",
             ),
+            border=True,
         )
 
-    with col6:
+    with row2[1]:
+
         st.metric(
             label="📉 52 Week Low",
             value=metrics.get(
                 "fifty_two_week_low",
                 "--",
             ),
+            border=True,
         )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    st.info(
+        "📌 All market data is provided by Yahoo Finance and may be delayed depending on the exchange."
+    )

@@ -334,4 +334,49 @@ footer{
     visibility:hidden;
 
 }
+/* ==========================================================
+   HERO
+   ========================================================== */
 
+.hero-card{
+
+    background:linear-gradient(
+        135deg,
+        #1D4ED8,
+        #2563EB
+    );
+
+    padding:30px;
+
+    border-radius:20px;
+
+    margin-bottom:25px;
+
+    box-shadow:
+        0 15px 35px rgba(37,99,235,.25);
+
+}
+
+.hero-title{
+
+    color:white;
+
+    margin:0;
+
+    font-size:40px;
+
+    font-weight:700;
+
+}
+
+.hero-subtitle{
+
+    margin-top:15px;
+
+    color:#DBEAFE;
+
+    font-size:18px;
+
+    line-height:1.7;
+
+}

@@ -11,7 +11,10 @@ from __future__ import annotations
 
 import streamlit as st
 
-from components.cards import render_metrics
+from components.cards import (
+    render_market_overview,
+    render_metrics,
+)
 from components.charts import (
     render_bollinger,
     render_candlestick,
@@ -27,28 +30,16 @@ from components.header import (
 )
 from components.sidebar import render_sidebar
 from services import StockDataLoader
-from utils import initialize_page
-
+from utils import (
+    calculate_indicators,
+    initialize_page,
+)
 
 # ==========================================================
 # INITIALIZE APPLICATION
 # ==========================================================
 
 initialize_page()
-
-
-# ==========================================================
-# HEADER
-# ==========================================================
-
-render_header()
-
-render_hero()
-
-render_project_status()
-
-st.markdown("<br>", unsafe_allow_html=True)
-
 
 # ==========================================================
 # SIDEBAR
@@ -63,6 +54,15 @@ period = settings.get("period", "5y")
 if not symbol:
     symbol = "AAPL"
 
+# ==========================================================
+# HEADER
+# ==========================================================
+
+render_header()
+
+render_hero()
+
+render_project_status()
 
 # ==========================================================
 # LOAD DATA
@@ -70,41 +70,37 @@ if not symbol:
 
 loader = StockDataLoader(symbol)
 
-if not loader.is_valid():
-
-    st.error(
-        f"Unable to load market data for '{symbol}'."
-    )
-
-    st.stop()
-
 with st.spinner("Loading market data..."):
 
     history = loader.history(period=period)
 
-    metrics = loader.dashboard_metrics()
-
 if history.empty:
 
-    st.error("No historical data found.")
+    st.error(f"No data found for '{symbol}'.")
 
     st.stop()
 
+history = calculate_indicators(history)
+
+metrics = loader.dashboard_metrics()
 
 # ==========================================================
-# METRICS
+# DASHBOARD
 # ==========================================================
 
 render_metrics(metrics)
 
-st.divider()
+st.markdown("")
 
+render_market_overview()
+
+st.divider()
 
 # ==========================================================
 # PRICE ANALYSIS
 # ==========================================================
 
-st.subheader("📈 Price Analysis")
+st.header("📈 Price Analysis")
 
 render_candlestick(
     history,
@@ -117,12 +113,11 @@ render_volume(
 
 st.divider()
 
-
 # ==========================================================
-# TECHNICAL INDICATORS
+# TECHNICAL ANALYSIS
 # ==========================================================
 
-st.subheader("📊 Technical Indicators")
+st.header("📊 Technical Indicators")
 
 render_moving_averages(
     history,
@@ -134,15 +129,15 @@ render_bollinger(
     symbol,
 )
 
-col1, col2 = st.columns(2)
+left, right = st.columns(2)
 
-with col1:
+with left:
 
     render_rsi(
         history,
     )
 
-with col2:
+with right:
 
     render_macd(
         history,
@@ -150,11 +145,24 @@ with col2:
 
 st.divider()
 
-
 # ==========================================================
 # FOOTER
 # ==========================================================
 
-st.caption(
-    "📈 StockPredictor AI | Built with Streamlit, Plotly & Yahoo Finance"
+st.markdown(
+    """
+---
+<center>
+
+**StockPredictor AI**
+
+Built with ❤️ using
+
+Streamlit • Plotly • Yahoo Finance
+
+Version 2.0
+
+</center>
+""",
+    unsafe_allow_html=True,
 )

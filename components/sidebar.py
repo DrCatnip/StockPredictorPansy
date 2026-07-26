@@ -4,14 +4,7 @@ StockPredictor AI
 components/sidebar.py
 ============================================================
 
-Application Sidebar
-
-Responsible for:
-- Stock search
-- Historical data settings
-- Prediction settings
-- Future application modules
-============================================================
+Professional Dashboard Sidebar
 """
 
 from __future__ import annotations
@@ -29,40 +22,45 @@ from utils.constants import (
 
 def render_sidebar() -> dict:
     """
-    Render the application sidebar.
+    Render application sidebar.
 
     Returns
     -------
     dict
-        User selected application settings.
+        Dashboard settings.
     """
 
     with st.sidebar:
 
+        # =====================================================
+        # BRAND
+        # =====================================================
+
         st.markdown(
             """
-            # 📈 StockPredictor AI
-            """,
-            unsafe_allow_html=True,
+# 📈 StockPredictor AI
+
+Professional AI Stock Analytics
+"""
         )
 
         st.caption(
-            "AI Powered Stock Market Analysis"
+            "Real-time market intelligence powered by Yahoo Finance"
         )
 
         st.divider()
 
-        # ==================================================
-        # STOCK SETTINGS
-        # ==================================================
+        # =====================================================
+        # SEARCH
+        # =====================================================
 
-        st.subheader("📊 Stock")
+        st.subheader("🔍 Search")
 
         symbol = st.text_input(
-            "Ticker Symbol",
+            "Ticker",
             value=DEFAULT_SYMBOL,
             placeholder="AAPL",
-            help="Example: AAPL, MSFT, TSLA, NVDA",
+            help="Example: AAPL, NVDA, TSLA, MSFT, RELIANCE.NS",
         )
 
         symbol = symbol.strip().upper()
@@ -70,36 +68,108 @@ def render_sidebar() -> dict:
         if not symbol:
             symbol = DEFAULT_SYMBOL
 
+        st.markdown("### ⭐ Quick Picks")
+
+        quick_pick = st.radio(
+            "",
+            [
+                "Custom",
+                "🍎 AAPL",
+                "🟩 NVDA",
+                "⚡ TSLA",
+                "🪟 MSFT",
+                "📦 AMZN",
+                "🌐 GOOGL",
+                "🎬 NFLX",
+            ],
+            label_visibility="collapsed",
+        )
+
+        quick_map = {
+            "🍎 AAPL": "AAPL",
+            "🟩 NVDA": "NVDA",
+            "⚡ TSLA": "TSLA",
+            "🪟 MSFT": "MSFT",
+            "📦 AMZN": "AMZN",
+            "🌐 GOOGL": "GOOGL",
+            "🎬 NFLX": "NFLX",
+        }
+
+        if quick_pick in quick_map:
+            symbol = quick_map[quick_pick]
+
+        st.divider()
+
+        # =====================================================
+        # MARKET DATA
+        # =====================================================
+
+        st.subheader("📅 Market Data")
+
         period = st.selectbox(
             "Historical Period",
-            options=AVAILABLE_PERIODS,
+            AVAILABLE_PERIODS,
             index=AVAILABLE_PERIODS.index(DEFAULT_PERIOD),
         )
 
+        interval = st.selectbox(
+            "Interval",
+            [
+                "1d",
+                "1wk",
+                "1mo",
+            ],
+            index=0,
+        )
+
         st.divider()
 
-        # ==================================================
-        # PREDICTION
-        # ==================================================
+        # =====================================================
+        # AI PREDICTION
+        # =====================================================
 
         st.subheader("🤖 Prediction")
 
-        prediction_days = st.selectbox(
+        prediction_days = st.slider(
             "Prediction Horizon",
-            options=PREDICTION_DAYS,
-            index=1,
+            min_value=5,
+            max_value=60,
+            step=5,
+            value=30,
         )
 
-        generate_prediction = st.button(
+        train = st.button(
             "🚀 Generate Prediction",
-            use_container_width=True,
+            width="stretch",
         )
 
         st.divider()
 
-        # ==================================================
+        # =====================================================
+        # LIVE MARKETS
+        # =====================================================
+
+        st.subheader("🌍 Markets")
+
+        st.markdown(
+            """
+🟢 **S&P 500**
+
+🟢 **NASDAQ**
+
+🔴 **Bitcoin**
+
+🟢 **Gold**
+
+🟢 **NIFTY 50**
+"""
+        )
+
+        st.divider()
+
+        # =====================================================
         # UPCOMING FEATURES
-        # ==================================================
+        # =====================================================
 
         with st.expander(
             "🚧 Upcoming Features",
@@ -108,49 +178,41 @@ def render_sidebar() -> dict:
 
             st.checkbox(
                 "AI Stock Analyst",
-                value=False,
                 disabled=True,
             )
 
             st.checkbox(
-                "Latest News",
-                value=False,
+                "Latest Financial News",
                 disabled=True,
             )
 
             st.checkbox(
                 "Portfolio Tracker",
-                value=False,
                 disabled=True,
             )
 
             st.checkbox(
                 "Watchlist",
-                value=False,
                 disabled=True,
             )
 
             st.checkbox(
-                "Market Heatmap",
-                value=False,
+                "Price Alerts",
                 disabled=True,
             )
 
             st.checkbox(
-                "AI Chat",
-                value=False,
+                "PDF Reports",
                 disabled=True,
             )
 
         st.divider()
 
-        st.caption(
-            f"Version {APP_VERSION}"
-        )
+        st.caption(f"Version {APP_VERSION}")
 
     return {
         "symbol": symbol,
         "period": period,
         "prediction_days": prediction_days,
-        "train": generate_prediction,
+        "train": train,
     }
