@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+import logging
 import math
 from typing import Any
+from urllib.parse import quote
 
 import pandas as pd
-import yfinance as yf
-from curl_cffi import requests as curl_requests
+import requests
 
 from backend.app.core.cache import history_cache, info_cache, market_cache
 from backend.app.core.constants import (
@@ -35,10 +36,67 @@ MARKET_INSTRUMENTS = (
     ("Gold", "GC=F", "USD"),
     ("Crude Oil", "CL=F", "USD"),
 )
+LOGGER = logging.getLogger(__name__)
 
 
-def _new_yahoo_session():
-    return curl_requests.Session(impersonate="chrome124")
+def _download_chart(
+    symbol: str,
+    period: str,
+    interval: str,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{quote(symbol, safe='')}"
+    response = requests.get(
+        url,
+        params={"range": period, "interval": interval},
+        headers={"User-Agent": "Mozilla/5.0"},
+        timeout=20,
+    )
+    response.raise_for_status()
+    chart = response.json().get("chart", {})
+    if chart.get("error"):
+        raise ValueError(chart["error"].get("description") or "Yahoo Finance chart request failed.")
+
+    results = chart.get("result") or []
+    if not results:
+        return pd.DataFrame(), {}
+
+    result = results[0]
+    metadata = result.get("meta", {})
+    timestamps = result.get("timestamp") or []
+    if not timestamps:
+        return pd.DataFrame(), metadata
+
+    dates = pd.to_datetime(timestamps, unit="s", utc=True)
+    timezone = metadata.get("exchangeTimezoneName")
+    if timezone:
+        dates = dates.tz_convert(timezone)
+    dates = dates.tz_localize(None)
+
+    quote_data = result.get("indicators", {}).get("quote", [{}])[0]
+    frame = pd.DataFrame(
+        {
+            column: pd.to_numeric(pd.Series(quote_data.get(key, []), index=dates), errors="coerce")
+            for column, key in (
+                ("Open", "open"),
+                ("High", "high"),
+                ("Low", "low"),
+                ("Close", "close"),
+                ("Volume", "volume"),
+            )
+        },
+        index=dates,
+    )
+
+    adjusted_data = result.get("indicators", {}).get("adjclose", [{}])[0].get("adjclose")
+    if adjusted_data and len(adjusted_data) == len(frame):
+        adjusted_close = pd.Series(adjusted_data, index=dates, dtype="float64")
+        adjustment = adjusted_close.div(frame["Close"])
+        for column in ("Open", "High", "Low"):
+            frame[column] = frame[column].mul(adjustment)
+        frame["Close"] = adjusted_close
+
+    frame.index.name = "Date"
+    return frame.dropna(subset=["Open", "High", "Low", "Close"]), metadata
 
 
 def fetch_market_quote(instrument: tuple[str, str, str]) -> dict[str, Any]:
@@ -51,11 +109,7 @@ def fetch_market_quote(instrument: tuple[str, str, str]) -> dict[str, Any]:
         "change_percent": None,
     }
     try:
-        history = yf.Ticker(symbol, session=_new_yahoo_session()).history(
-            period="5d",
-            interval="1d",
-            auto_adjust=True,
-        )
+        history, _ = _download_chart(symbol, period="5d", interval="1d")
         closes = history["Close"].dropna()
         if closes.empty:
             return quote
@@ -70,7 +124,7 @@ def fetch_market_quote(instrument: tuple[str, str, str]) -> dict[str, Any]:
             if math.isfinite(previous) and previous != 0:
                 quote["change_percent"] = (current - previous) / previous * 100
     except Exception:
-        pass
+        LOGGER.exception("Yahoo market quote fetch failed for %s (%s)", name, symbol)
     return quote
 
 
@@ -85,15 +139,11 @@ def fetch_market_overview() -> list[dict[str, Any]]:
 @dataclass
 class StockDataLoader:
     symbol: str = DEFAULT_SYMBOL
-    ticker: Any = field(init=False, repr=False)
-    session: Any = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.symbol = (self.symbol or DEFAULT_SYMBOL).strip().upper()
         if not self.symbol:
             self.symbol = DEFAULT_SYMBOL
-        self.session = _new_yahoo_session()
-        self.ticker = yf.Ticker(self.symbol, session=self.session)
 
     def history(
         self,
@@ -104,21 +154,12 @@ class StockDataLoader:
 
         def _download() -> pd.DataFrame:
             try:
-                frame = yf.download(
-                    self.symbol,
-                    period=period,
-                    interval=interval,
-                    auto_adjust=True,
-                    progress=False,
-                    group_by="column",
-                    session=self.session,
-                )
+                frame, _ = _download_chart(self.symbol, period, interval)
                 if frame.empty:
                     return pd.DataFrame()
-                if isinstance(frame.columns, pd.MultiIndex):
-                    frame.columns = frame.columns.get_level_values(0)
-                return frame.dropna()
+                return frame
             except Exception:
+                LOGGER.exception("Yahoo history fetch failed for %s (%s, %s)", self.symbol, period, interval)
                 return pd.DataFrame()
 
         return history_cache.get_or_set(key, HISTORY_CACHE_TTL, _download)
@@ -128,8 +169,20 @@ class StockDataLoader:
 
         def _fetch() -> dict[str, Any]:
             try:
-                return self.ticker.info
+                _, metadata = _download_chart(self.symbol, period="5d", interval="1d")
+                return {
+                    "longName": metadata.get("longName") or metadata.get("shortName"),
+                    "shortName": metadata.get("shortName"),
+                    "currentPrice": metadata.get("regularMarketPrice"),
+                    "previousClose": metadata.get("chartPreviousClose"),
+                    "marketCap": None,
+                    "trailingPE": None,
+                    "volume": metadata.get("regularMarketVolume"),
+                    "fiftyTwoWeekHigh": metadata.get("fiftyTwoWeekHigh"),
+                    "fiftyTwoWeekLow": metadata.get("fiftyTwoWeekLow"),
+                }
             except Exception:
+                LOGGER.exception("Yahoo metadata fetch failed for %s", self.symbol)
                 return {}
 
         return info_cache.get_or_set(key, INFO_CACHE_TTL, _fetch)
