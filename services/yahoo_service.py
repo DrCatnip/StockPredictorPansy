@@ -15,7 +15,9 @@ Responsible for:
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+import math
 from typing import Any
 
 import pandas as pd
@@ -27,6 +29,7 @@ from utils.constants import (
     DEFAULT_INTERVAL,
     DEFAULT_PERIOD,
     DEFAULT_SYMBOL,
+    MARKET_CACHE_TTL,
 )
 from utils.formatting import (
     format_currency,
@@ -34,6 +37,59 @@ from utils.formatting import (
     format_price_change,
     format_volume,
 )
+
+MARKET_INSTRUMENTS = (
+    ("S&P 500", "^GSPC", "USD"),
+    ("NASDAQ", "^IXIC", "USD"),
+    ("DOW JONES", "^DJI", "USD"),
+    ("NIFTY 50", "^NSEI", "INR"),
+    ("BTC", "BTC-USD", "USD"),
+    ("ETH", "ETH-USD", "USD"),
+    ("Gold", "GC=F", "USD"),
+    ("Crude Oil", "CL=F", "USD"),
+)
+
+
+def _fetch_market_quote(instrument: tuple[str, str, str]) -> dict[str, Any]:
+    name, symbol, currency = instrument
+    quote = {
+        "name": name,
+        "symbol": symbol,
+        "currency": currency,
+        "price": None,
+        "change_percent": None,
+    }
+
+    try:
+        history = yf.Ticker(symbol).history(
+            period="5d",
+            interval="1d",
+            auto_adjust=True,
+        )
+        closes = history["Close"].dropna()
+        if closes.empty:
+            return quote
+
+        current = float(closes.iloc[-1])
+        if not math.isfinite(current):
+            return quote
+
+        quote["price"] = current
+        if len(closes) > 1:
+            previous = float(closes.iloc[-2])
+            if math.isfinite(previous) and previous != 0:
+                quote["change_percent"] = (current - previous) / previous * 100
+    except Exception:
+        return quote
+
+    return quote
+
+
+@st.cache_data(ttl=MARKET_CACHE_TTL, show_spinner=False)
+def fetch_market_overview() -> list[dict[str, Any]]:
+    """Fetch a cached snapshot of supported indices and market assets."""
+    with ThreadPoolExecutor(max_workers=len(MARKET_INSTRUMENTS)) as executor:
+        return list(executor.map(_fetch_market_quote, MARKET_INSTRUMENTS))
 
 
 @dataclass

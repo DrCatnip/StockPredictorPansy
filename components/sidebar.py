@@ -71,7 +71,7 @@ Professional AI Stock Analytics
         st.markdown("### ⭐ Quick Picks")
 
         quick_pick = st.radio(
-            "",
+            "Quick stock selection",
             [
                 "Custom",
                 "🍎 AAPL",
@@ -143,27 +143,20 @@ Professional AI Stock Analytics
             width="stretch",
         )
 
+        evaluate = st.button(
+            "Evaluate Forecast",
+            width="stretch",
+            help="Compare a chronological holdout forecast with a last-close baseline.",
+        )
+
         st.divider()
 
         # =====================================================
-        # LIVE MARKETS
+        # MARKET SNAPSHOT
         # =====================================================
 
         st.subheader("🌍 Markets")
-
-        st.markdown(
-            """
-🟢 **S&P 500**
-
-🟢 **NASDAQ**
-
-🔴 **Bitcoin**
-
-🟢 **Gold**
-
-🟢 **NIFTY 50**
-"""
-        )
+        st.caption("Current quotes are shown in the Global Market Overview.")
 
         st.divider()
 
@@ -213,6 +206,8 @@ Professional AI Stock Analytics
     return {
         "symbol": symbol,
         "period": period,
+        "interval": interval,
         "prediction_days": prediction_days,
         "train": train,
+        "evaluate": evaluate,
     }

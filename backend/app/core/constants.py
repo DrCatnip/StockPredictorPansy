@@ -1,0 +1,19 @@
+APP_NAME = "StockPredictor AI"
+APP_VERSION = "4.0.0"
+APP_DESCRIPTION = "Stock analysis, market data, and experimental forecast evaluation."
+
+DEFAULT_SYMBOL = "AAPL"
+DEFAULT_PERIOD = "5y"
+DEFAULT_INTERVAL = "1d"
+
+AVAILABLE_PERIODS = ["1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "max"]
+AVAILABLE_INTERVALS = ["1d", "1wk", "1mo"]
+PREDICTION_DAYS = [5, 10, 15, 30]
+BACKTEST_WINDOWS = [3]
+
+TIME_STEP = 60
+LSTM_EPOCHS = 10
+HISTORY_CACHE_TTL = 900
+INFO_CACHE_TTL = 900
+MARKET_CACHE_TTL = 900
+MODEL_CACHE_TTL = 6 * 3600

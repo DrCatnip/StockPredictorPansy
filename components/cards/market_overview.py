@@ -11,80 +11,34 @@ from __future__ import annotations
 
 import streamlit as st
 
+from utils.formatting import format_percentage
 
-def render_market_overview() -> None:
+
+def render_market_overview(quotes: list[dict]) -> None:
     """
-    Render a global market overview section.
-
-    NOTE:
-    These values are placeholders for now.
-    In Phase 3 they will come from Yahoo Finance.
+    Render the latest available Yahoo Finance market snapshot.
     """
 
     st.markdown("## 🌍 Global Market Overview")
+    st.caption("Yahoo Finance quotes may be delayed and are cached for 15 minutes.")
 
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-
-        st.metric(
-            "S&P 500",
-            "6,225.52",
-            "+1.21%",
-            border=True,
+    columns = st.columns(4)
+    for index, quote in enumerate(quotes):
+        price = quote["price"]
+        currency_symbol = "₹" if quote["currency"] == "INR" else "$"
+        value = (
+            f"{currency_symbol}{price:,.2f}"
+            if price is not None
+            else "Unavailable"
         )
+        change = quote["change_percent"]
+        delta = format_percentage(change) if change is not None else None
 
-        st.metric(
-            "NASDAQ",
-            "20,601.10",
-            "+0.87%",
-            border=True,
-        )
-
-    with col2:
-
-        st.metric(
-            "DOW JONES",
-            "44,828.53",
-            "-0.18%",
-            border=True,
-        )
-
-        st.metric(
-            "NIFTY 50",
-            "25,461.30",
-            "+0.42%",
-            border=True,
-        )
-
-    with col3:
-
-        st.metric(
-            "BTC",
-            "$108,300",
-            "-2.34%",
-            border=True,
-        )
-
-        st.metric(
-            "ETH",
-            "$2,570",
-            "+0.95%",
-            border=True,
-        )
-
-    with col4:
-
-        st.metric(
-            "Gold",
-            "$3,340",
-            "+0.28%",
-            border=True,
-        )
-
-        st.metric(
-            "Crude Oil",
-            "$67.90",
-            "-0.61%",
-            border=True,
-        )
+        with columns[index % len(columns)]:
+            st.metric(
+                quote["name"],
+                value,
+                delta=delta,
+                border=True,
+                help=f"Yahoo Finance symbol: {quote['symbol']}",
+            )

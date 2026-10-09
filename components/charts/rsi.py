@@ -95,5 +95,5 @@ def render_rsi(df: pd.DataFrame) -> None:
 
     st.plotly_chart(
         fig,
-        use_container_width=True,
+        width="stretch",
     )
