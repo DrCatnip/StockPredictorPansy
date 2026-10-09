@@ -1,7 +1,7 @@
 services:
   - type: web
     name: stockpredictor-api
-    env: python
+    runtime: python
     plan: free
     buildCommand: pip install --upgrade pip && pip install -r backend/requirements.txt
     startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
@@ -11,8 +11,9 @@ services:
       - key: ALLOWED_ORIGINS
         value: https://stockpredictor-web.onrender.com
 
-  - type: static
+  - type: web
     name: stockpredictor-web
+    runtime: static
     buildCommand: npm ci --prefix frontend && npm run build --prefix frontend
     staticPublishPath: frontend/dist
     envVars:
