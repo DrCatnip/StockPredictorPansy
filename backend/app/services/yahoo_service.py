@@ -7,6 +7,7 @@ from typing import Any
 
 import pandas as pd
 import yfinance as yf
+from curl_cffi import requests as curl_requests
 
 from backend.app.core.cache import history_cache, info_cache, market_cache
 from backend.app.core.constants import (
@@ -36,6 +37,10 @@ MARKET_INSTRUMENTS = (
 )
 
 
+def _new_yahoo_session():
+    return curl_requests.Session(impersonate="chrome124")
+
+
 def fetch_market_quote(instrument: tuple[str, str, str]) -> dict[str, Any]:
     name, symbol, currency = instrument
     quote: dict[str, Any] = {
@@ -46,7 +51,7 @@ def fetch_market_quote(instrument: tuple[str, str, str]) -> dict[str, Any]:
         "change_percent": None,
     }
     try:
-        history = yf.Ticker(symbol).history(
+        history = yf.Ticker(symbol, session=_new_yahoo_session()).history(
             period="5d",
             interval="1d",
             auto_adjust=True,
@@ -81,12 +86,14 @@ def fetch_market_overview() -> list[dict[str, Any]]:
 class StockDataLoader:
     symbol: str = DEFAULT_SYMBOL
     ticker: Any = field(init=False, repr=False)
+    session: Any = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.symbol = (self.symbol or DEFAULT_SYMBOL).strip().upper()
         if not self.symbol:
             self.symbol = DEFAULT_SYMBOL
-        self.ticker = yf.Ticker(self.symbol)
+        self.session = _new_yahoo_session()
+        self.ticker = yf.Ticker(self.symbol, session=self.session)
 
     def history(
         self,
@@ -104,6 +111,7 @@ class StockDataLoader:
                     auto_adjust=True,
                     progress=False,
                     group_by="column",
+                    session=self.session,
                 )
                 if frame.empty:
                     return pd.DataFrame()
