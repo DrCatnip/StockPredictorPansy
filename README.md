@@ -46,7 +46,7 @@ Open `http://localhost:5173`. The API docs are at `http://localhost:8000/docs`. 
 
 ## Deploy
 
-The Render blueprint deploys a free FastAPI web service and React static frontend as separate services. Create or update the blueprint from this repository's `render.yaml`. The frontend and API origins are configured for `stockpredictor-web.onrender.com` and `stockpredictor-api.onrender.com`.
+The Render blueprint deploys a free FastAPI web service and React static frontend as separate services. Create or sync the blueprint from this repository's `render.yaml`. Render provides each service's assigned URL to the other service, so custom Render host suffixes are handled automatically.
 
 ## Tests
 

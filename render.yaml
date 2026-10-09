@@ -9,7 +9,10 @@ services:
       - key: PYTHON_VERSION
         value: 3.12.15
       - key: ALLOWED_ORIGINS
-        value: https://stockpredictor-web.onrender.com
+        fromService:
+          name: stockpredictor-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
 
   - type: web
     name: stockpredictor-web
@@ -20,4 +23,7 @@ services:
       - key: NODE_VERSION
         value: 24.12.0
       - key: VITE_API_BASE_URL
-        value: https://stockpredictor-api.onrender.com
+        fromService:
+          name: stockpredictor-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
