@@ -1,6 +1,6 @@
 # StockPredictor AI
 
-Stock analysis dashboard with market data, technical indicators, and experimental forecasts. The active product direction is a React frontend backed by a FastAPI service. The original Streamlit app remains available as a fallback while the migration is validated.
+Stock analysis dashboard with market data, technical indicators, and experimental forecasts, built with a React frontend and FastAPI backend.
 
 ## Features
 
@@ -46,7 +46,7 @@ Open `http://localhost:5173`. The API docs are at `http://localhost:8000/docs`. 
 
 ## Deploy
 
-The Render blueprint deploys the FastAPI API and React static frontend as separate services. Configure `ALLOWED_ORIGINS` and `VITE_API_BASE_URL` to match the assigned service URLs if the Render service names change.
+The Render blueprint deploys a free FastAPI web service and React static frontend as separate services. Create or update the blueprint from this repository's `render.yaml`. The frontend and API origins are configured for `stockpredictor-web.onrender.com` and `stockpredictor-api.onrender.com`.
 
 ## Tests
 
@@ -58,12 +58,4 @@ API contract tests use the development client dependency:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r backend\requirements-dev.txt
-```
-
-## Streamlit Fallback
-
-The previous dashboard is still in `app.py`:
-
-```powershell
-.\.venv\Scripts\python.exe -m streamlit run app.py
 ```
